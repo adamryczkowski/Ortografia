@@ -4,6 +4,8 @@ from pathlib import Path
 
 from pydantic import BaseModel
 
+from .beta_scoring_function import question_score
+
 
 class Question(BaseModel):
     word: str
@@ -17,27 +19,48 @@ class Question(BaseModel):
         else:
             self.incorrect_answer_count += 1
 
-    def get_score(self, current_epoch: int) -> float:
-        random_salt = random.uniform(
-            -1 / (current_epoch - self.last_asked + 1),
-            1 / (current_epoch - self.last_asked + 1),
+    def get_score(self, current_epoch: int, add_salt: bool = True) -> float:
+        if add_salt:
+            random_salt = random.uniform(-0.05, 0.05)
+        else:
+            random_salt = 0
+
+        beta_median = question_score(
+            positive_reviews_count=self.correct_answer_count,
+            total_reviews_count=self.correct_answer_count + self.incorrect_answer_count,
+            CI=0.2 + random_salt,
         )
 
-        # beta_median
+        # exponential_decay = np.exp(-(current_epoch - self.last_asked) / beta_median)
+        # exponential_decay acts as a component that artificially increases score of the recently-answered question, to prevent the program from asking it again.
+
+        # beta_median is a better version of an expected probability of giving the next answer correct.
 
         # decay_component = current_epoch - self.last_asked + 1
-        return (self.correct_answer_count - self.incorrect_answer_count) + random_salt
+        return beta_median
 
 
 class QuestionGenerator(BaseModel):
-    questions: list[Question] = []
+    questions: dict[str, Question] = {}
     epoch: int = 0
     total_score: int = 0
 
     def add_question(self, question: Question):
-        self.questions.append(question)
+        self.questions[question.word] = question
 
     def get_question(self) -> Question:
+        return self.worst_question
+
+    def update_question(self, question: Question, correct: bool):
+        question.update_score(correct)
+        self.add_question(question)
+        if correct:
+            self.total_score += 1
+        else:
+            self.total_score -= 3
+
+    @property
+    def worst_question(self) -> Question:
         class Q(BaseModel):
             question: Question
             utility: float
@@ -47,20 +70,16 @@ class QuestionGenerator(BaseModel):
 
         self.epoch += 1
         questions: list[Q] = []
-        for q in self.questions:
-            heapq.heappush(questions, Q(question=q, utility=q.get_score(self.epoch)))
+        for q in self.questions.values():
+            heapq.heappush(
+                questions, Q(question=q, utility=q.get_score(self.epoch, False))
+            )
 
         question: Question = questions[0].question
-        question.last_asked = self.epoch
         return question
 
-    def update_question(self, question: Question, correct: bool):
-        question.update_score(correct)
-        self.add_question(question)
-        if correct:
-            self.total_score += 1
-        else:
-            self.total_score -= 3
+    def get_score(self, add_salt: bool = True) -> float:
+        return self.worst_question.get_score(0, add_salt)
 
 
 def load_questions(file_path: Path) -> QuestionGenerator:

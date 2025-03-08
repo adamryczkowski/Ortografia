@@ -50,9 +50,11 @@ def main():
                 user_is_correct = answer.lower() == correct_answer
             generator.update_question(question, user_is_correct)
             if user_is_correct:
-                print(f"Correct. Score: {generator.total_score}")
+                print(f"Correct. Score: {generator.get_score(False):.1%}")
             else:
-                print(f"Incorrect. True answer: {correct_answer}")
+                print(
+                    f"Incorrect. True answer: {correct_answer}. Score: {generator.get_score(False):.1%}"
+                )
             break
 
 

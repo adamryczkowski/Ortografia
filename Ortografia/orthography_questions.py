@@ -1,7 +1,10 @@
 from __future__ import annotations
+
+from builtins import enumerate
 from typing import override
 
 from .ifaces import I_Response, I_Problem, IncorrectInputError
+from .question_selection import QuestionGenerator, QuestionWithScore
 from enum import Enum
 from pydantic import BaseModel
 from rich.text import Text
@@ -27,13 +30,14 @@ def build_regexp_from_placeholders(placeholders: list[PlaceholderType]) -> str:
             raise ValueError(f"Unknown placeholder type {placeholder}")
 
     regex = r"|".join(ans)
-    regex = f"^.*({regex}).*$"
+    # regex = f"^(.*({regex}))+.*$"
     return regex
 
 
 class InputPlaceholder(BaseModel):
     placeholder_type: PlaceholderType
     value: bool = False  # True means the letter from the placeholder label, False means the alternative.
+    content: str  # The correct string to be put into the placeholder
 
     def render_ambiguous_placeholder(self, emphasize: bool) -> Text:
         ans = Text()
@@ -51,42 +55,26 @@ class InputPlaceholder(BaseModel):
     def render_correct_placeholder(self, emphasize: bool) -> Text:
         ans = Text()
         style = "bold" if emphasize else ""
-        if self.placeholder_type == PlaceholderType.RZ:
-            if self.value:
-                ans.append("rz", style=style)
-            else:
-                ans.append("ż", style=style)
-        elif self.placeholder_type == PlaceholderType.CH:
-            if self.value:
-                ans.append("ch", style=style)
-            else:
-                ans.append("h", style=style)
-        elif self.placeholder_type == PlaceholderType.U:
-            if self.value:
-                ans.append("u", style=style)
-            else:
-                ans.append("ó", style=style)
-        else:
-            raise ValueError(f"Unknown placeholder type {self.placeholder_type}")
+        ans.append(self.content, style=style)
         return ans
 
-    def _a_letter(self, correct: bool) -> str:
+    def _a_letter(self, incorrect: bool) -> str:
         if self.placeholder_type == PlaceholderType.RZ:
-            return "rz" if self.value != correct else "ż"
+            return "rz" if self.value != incorrect else "ż"
         elif self.placeholder_type == PlaceholderType.CH:
-            return "ch" if self.value != correct else "h"
+            return "ch" if self.value != incorrect else "h"
         elif self.placeholder_type == PlaceholderType.U:
-            return "u" if self.value != correct else "ó"
+            return "u" if self.value != incorrect else "ó"
         else:
             raise ValueError(f"Unknown placeholder type {self.placeholder_type}")
 
     @property
     def correct_letter(self) -> str:
-        return self._a_letter(correct=True)
+        return self._a_letter(incorrect=False)
 
     @property
     def incorrect_letter(self) -> str:
-        return self._a_letter(correct=False)
+        return self._a_letter(incorrect=True)
 
 
 class OrthographyQuestion(I_Problem):
@@ -108,45 +96,75 @@ class OrthographyQuestion(I_Problem):
                 PlaceholderType.CH,
                 PlaceholderType.U,
             ]
+        null_char = "_"
+        null_pattern = re.compile(null_char)
+        # Check if the word contains no null placeholders
+        if null_pattern.search(word) is not None:
+            raise ValueError(f"Word cannot contain '{null_char}'")
 
         regexp = build_regexp_from_placeholders(placeholder_types)
         pattern = re.compile(regexp, re.IGNORECASE)
 
-        matches = pattern.finditer(word, re.IGNORECASE)
+        matches = pattern.finditer(word)
+        #         matches = re.findall(pattern, word)
         ans = []
 
-        for match in matches:
+        # Replace the placeholders with the null character
+        placeholded_word = re.sub(pattern, null_char, word)
+
+        placeholded_matches = null_pattern.finditer(placeholded_word)
+        placeholders = []
+
+        for i, (match, placeholded_match) in enumerate(
+            zip(matches, placeholded_matches)
+        ):
             start, end = match.span()
-            target_placeholder_idx = len(ans)
-            placeholders = []
-            for i in range(len(match.groups())):
-                group = match.group(i + 1).lower()
-                if group == "rz" or group == "ż":
-                    placeholders.append(
+            content = word[start:end]
+            start, end = placeholded_match.span()
+
+            if content == "rz" or content == "ż":
+                placeholders.append(
+                    (
+                        start,
                         InputPlaceholder(
-                            placeholder_type=PlaceholderType.RZ, value=group == "rz"
-                        )
+                            placeholder_type=PlaceholderType.RZ,
+                            value=content.lower() == "rz",
+                            content=content,
+                        ),
                     )
-                elif group == "ch" or group == "h":
-                    placeholders.append(
-                        InputPlaceholder(
-                            placeholder_type=PlaceholderType.CH, value=group == "ch"
-                        )
-                    )
-                elif group == "u" or group == "ó":
-                    placeholders.append(
-                        InputPlaceholder(
-                            placeholder_type=PlaceholderType.U, value=group == "u"
-                        )
-                    )
-                else:
-                    raise ValueError(f"Unknown placeholder {group}")
-                question = OrthographyQuestion(
-                    word=word,
-                    placeholders=[(start, placeholder) for placeholder in placeholders],
-                    target_placeholder_idx=target_placeholder_idx,
                 )
-                ans.append(question)
+            elif content == "ch" or content == "h":
+                placeholders.append(
+                    (
+                        start,
+                        InputPlaceholder(
+                            placeholder_type=PlaceholderType.CH,
+                            value=content.lower() == "ch",
+                            content=content,
+                        ),
+                    )
+                )
+            elif content == "u" or content == "ó":
+                placeholders.append(
+                    (
+                        start,
+                        InputPlaceholder(
+                            placeholder_type=PlaceholderType.U,
+                            value=content.lower() == "u",
+                            content=content,
+                        ),
+                    )
+                )
+            else:
+                raise ValueError(f"Unknown placeholder {content}")
+        for i in range(len(placeholders)):
+            question = OrthographyQuestion(
+                word=placeholded_word,
+                placeholders=placeholders,
+                target_placeholder_idx=i,
+            )
+            print(question.get_incorrect_word_str())
+            ans.append(question)
         return ans
 
     def __init__(
@@ -239,7 +257,7 @@ class OrthographyQuestion(I_Problem):
             ans += self.word[
                 last_str_pos : placeholder[0]
             ]  # Beginning of the word, excluding the first placeholder
-            ans += placeholder[1].correct_letter
+            ans += placeholder[1].content
 
             last_str_pos = placeholder[0] + 1
             placeholder_idx += 1
@@ -297,3 +315,11 @@ class OrthographyResponse(I_Response):
     @override
     def is_correct(self) -> bool:
         return self.user_response_correct
+
+
+class _QuestionWithScore_Orthography(QuestionWithScore):
+    question: OrthographyQuestion  # pyright: ignore [reportIncompatibleVariableOverride]
+
+
+class QuestionGeneratorForOrthography(QuestionGenerator):
+    questions: dict[str, _QuestionWithScore_Orthography] = {}  # pyright: ignore [reportIncompatibleVariableOverride]

@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import heapq
 import random
 
@@ -45,11 +46,13 @@ class QuestionWithScore(BaseModel):
             total_reviews_count=self.correct_count + self.incorrect_count,
             CI=0.2 + random_salt,
         )
-        decay_factor = 1.0
+        decay_factor = (
+            0.4  # The smaller, the bigger the delay before repeating the same question.
+        )
         question_age = current_epoch - self.last_epoch
 
         exponential_decay = np.exp(-(question_age * decay_factor))
-        return exponential_decay + beta_median * (1 - exponential_decay)
+        return 1 * exponential_decay + beta_median * (1 - exponential_decay)
 
 
 class QuestionGenerator(BaseModel):
@@ -71,6 +74,7 @@ class QuestionGenerator(BaseModel):
     def update_question(self, question: I_Problem, correct: bool):
         q = self.questions[question.problem_ID]
         q.update_score(correct, self.current_epoch)
+        self.current_epoch += 1
 
     def get_worst_questions(
         self, max_count: int, add_salt: bool = False, add_decay: bool = True
@@ -82,15 +86,14 @@ class QuestionGenerator(BaseModel):
             def __lt__(self, other: Q):
                 return self.utility < other.utility
 
-        self.current_epoch += 1
         questions: list[Q] = []
         for q in self.questions.values():
             if add_decay:
-                utility = q.get_correctness_score()
-            else:
                 utility = q.get_score_for_selection(
                     self.current_epoch, add_salt=add_salt
                 )
+            else:
+                utility = q.get_correctness_score()
             heapq.heappush(questions, Q(question=q, utility=utility))
         ans = []
         max_count = min(max_count, len(questions))
@@ -101,7 +104,11 @@ class QuestionGenerator(BaseModel):
 
     @property
     def worst_question(self) -> QuestionWithScore:
-        return self.get_worst_questions(1, add_salt=True, add_decay=True)[0]
+        worst_questions = self.get_worst_questions(1, add_salt=True, add_decay=True)
+        if len(worst_questions) == 0:
+            print("No questions")
+
+        return worst_questions[0]
 
     def get_score(self) -> float:
         questions = self.get_worst_questions(max_count=6)

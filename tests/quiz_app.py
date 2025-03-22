@@ -4,26 +4,41 @@ from pydantic import TypeAdapter
 from rich.console import Console
 from rich.text import Text
 
-from Ortografia import load_questions, QuestionGenerator, IncorrectInputError
+from Ortografia import (
+    load_questions,
+    QuestionGeneratorForOrthography,
+    IncorrectInputError,
+    I_Response,
+)
 
 
 def main2():
     console = Console()
-    file_path = Path(__file__).parent / "quiz_input.txt"
+    file_path = Path(__file__).parent / "polish_frequent_words.txt"
+    file_path = Path(__file__).parent / "test_words.txt"
+    file_path = Path(__file__).parent / "test_words_small.txt"
     state_path = Path(__file__).parent / "quiz_state.json"
     greeting = Text()
     if state_path.is_file():
         with open(state_path, "r") as file:
             json = file.read()
-        generator = TypeAdapter(QuestionGenerator).validate_json(json)
-        greeting.append("Welcome! You will be asked to spell a set of ")
-        greeting.append(str(len(generator.questions)), "bold")
-        greeting.append(" questions.")
-    else:
-        generator = load_questions(file_path)
-        greeting.append("Welcome! Your last session has been restored. You have given ")
+        generator = TypeAdapter(QuestionGeneratorForOrthography).validate_json(json)
+        greeting.append("Welcome! Your last session has been restored from ")
+        rel_path = file_path.relative_to(Path(__file__).parent)
+        greeting.append(str(rel_path), "yellow")
+        greeting.append(". You have given ")
         greeting.append(str(generator.current_epoch), "bold")
         greeting.append(" answers to the set of total ")
+        greeting.append(str(len(generator.questions)), "bold")
+        greeting.append(" questions. Your current score is: ")
+        greeting.append(f"{generator.get_score():.1%}", "bold")
+        greeting.append(".")
+    else:
+        generator = load_questions(file_path)
+
+        greeting.append(
+            "Welcome! New dictionary loaded. You will be asked to spell a set of "
+        )
         greeting.append(str(len(generator.questions)), "bold")
         greeting.append(" questions. Your current score is: ")
         greeting.append(f"{generator.get_score():.1%}", "bold")
@@ -38,20 +53,25 @@ def main2():
 
         question = generator.get_question()
 
+        response = None
         while True:
             console.print(question.user_prompt_string())
             answer = input("Your answer: ").strip()
-            previous_score = generator.get_score()
             try:
                 response = question.parse_user_response(answer)
             except IncorrectInputError as e:
                 console.print(str(e))
                 continue
+            except Exception:
+                raise
             break
 
+        assert isinstance(response, I_Response)
+
+        previous_score = generator.get_score()
+        generator.update_question(question, response.is_correct)
         current_score = generator.get_score()
         delta_score = current_score - previous_score
-        generator.update_question(question, response.is_correct)
         response_text = Text()
         if response.is_correct:
             response_text.append("Correct", "bold green")
@@ -59,16 +79,17 @@ def main2():
             response_text.append("Incorrect", "bold red")
 
         response_text.append(f". {generator.get_score():.1%}", "bold")
-        if delta_score < 0.001:
+        if delta_score < -0.001:
             response_text.append(" (")
-            response_text.append(f"{previous_score:.1%}", "red")
+            response_text.append(f"{delta_score:.2%}", "red")
             response_text.append(" change)")
         elif delta_score > 0.001:
             response_text.append(" (")
-            response_text.append(f"{previous_score:.1%}", "green")
+            response_text.append(f"{delta_score:.2%}", "green")
             response_text.append(" change)")
 
         response_text.append(".")
+        console.print(response_text)
 
 
 #

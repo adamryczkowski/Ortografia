@@ -77,7 +77,7 @@ class QuestionGenerator(BaseModel):
         self.current_epoch += 1
 
     def get_worst_questions(
-        self, max_count: int, add_salt: bool = False, add_decay: bool = True
+        self, max_count: int, add_salt: bool, add_decay: bool
     ) -> list[QuestionWithScore]:
         class Q(BaseModel):
             question: QuestionWithScore
@@ -111,7 +111,9 @@ class QuestionGenerator(BaseModel):
         return worst_questions[0]
 
     def get_score(self) -> float:
-        questions = self.get_worst_questions(max_count=6)
+        questions = self.get_worst_questions(
+            max_count=6, add_decay=False, add_salt=False
+        )
         weights = np.ndarray(len(questions), float)
         for i in range(len(questions)):
             weights[i] = np.exp(-i * 0.5)

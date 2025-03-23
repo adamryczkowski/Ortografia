@@ -8,6 +8,7 @@ from pydantic import BaseModel
 
 from .beta_scoring_function import question_score
 from .ifaces import I_Problem
+from rich.text import Text
 
 
 class QuestionWithScore(BaseModel):
@@ -53,6 +54,24 @@ class QuestionWithScore(BaseModel):
 
         exponential_decay = np.exp(-(question_age * decay_factor))
         return 1 * exponential_decay + beta_median * (1 - exponential_decay)
+
+    def rich_repr(self) -> Text:
+        ans = Text.assemble(
+            self.question.short_user_prompt_string(),
+            Text(" correct - incorrect: "),
+            Text(str(self.correct_count), "bold"),
+            Text(" - "),
+            Text(str(self.incorrect_count), "bold"),
+            Text(". Score: "),
+            Text(f"{self.get_correctness_score():.2%}", "bold red"),
+        )
+        return ans
+
+    def __repr__(self) -> str:
+        word = self.question.short_user_prompt_string()
+        word = repr(word)
+        ans = f"{word} correct - incorrect: {self.correct_count} - {self.incorrect_count}. Score: {self.get_correctness_score():.2%}"
+        return ans
 
 
 class QuestionGenerator(BaseModel):

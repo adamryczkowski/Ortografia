@@ -3,6 +3,7 @@ from .word_parser import load_questions
 from .question_selection import QuestionGenerator
 from .ifaces import IncorrectInputError, I_Response, I_Problem
 from .orthography_questions import QuestionGeneratorForOrthography, PlaceholderType
+from .analyze import UserContext
 
 __all__ = [
     "Question",
@@ -13,4 +14,5 @@ __all__ = [
     "I_Response",
     "I_Problem",
     "PlaceholderType",
+    "UserContext",
 ]

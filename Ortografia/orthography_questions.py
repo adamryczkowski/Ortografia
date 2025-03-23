@@ -216,6 +216,10 @@ class OrthographyQuestion(I_Problem):
         )
 
     @override
+    def short_user_prompt_string(self) -> Text:
+        return self.get_ambiguous_word(mask_only_one=True)
+
+    @override
     def parse_user_response(self, answer: str) -> I_Response:
         answer = answer.strip().lower()
         if answer == self.target_placeholder.correct_letter:
@@ -288,7 +292,7 @@ class OrthographyQuestion(I_Problem):
         ans += self.word[last_str_pos:]  # The rest of the word
         return ans
 
-    def get_ambiguous_word(self) -> Text:
+    def get_ambiguous_word(self, mask_only_one: bool = False) -> Text:
         ans = Text()
         placeholder_idx = 0
         last_str_pos = 0
@@ -297,11 +301,15 @@ class OrthographyQuestion(I_Problem):
             ans.append(
                 self.word[last_str_pos : placeholder[0]]
             )  # Beginning of the word, excluding the first placeholder
-            ans.append(
-                placeholder[1].render_ambiguous_placeholder(
-                    self.target_placeholder_idx == placeholder_idx
-                )
-            )
+            if self.target_placeholder_idx != placeholder_idx:
+                if mask_only_one:
+                    ans = Text.assemble(
+                        ans, placeholder[1].render_correct_placeholder(False)
+                    )
+                else:
+                    ans.append(placeholder[1].render_ambiguous_placeholder(False))
+            else:
+                ans.append(placeholder[1].render_ambiguous_placeholder(True))
 
             last_str_pos = placeholder[0] + 1
             placeholder_idx += 1

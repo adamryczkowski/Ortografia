@@ -1,0 +1,2 @@
+TODO: Bold the score only if it changed.
+TODO: Add an option to display correct/incorrect words instead of placeholders.

@@ -18,6 +18,9 @@ class I_Problem(BaseModel, ABC):
     def user_prompt_string(self) -> Text: ...
 
     @abstractmethod
+    def short_user_prompt_string(self) -> Text: ...
+
+    @abstractmethod
     def parse_user_response(self, answer: str) -> I_Response: ...
 
 

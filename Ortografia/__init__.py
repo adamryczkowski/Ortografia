@@ -2,7 +2,7 @@ from .quiz_app import Question
 from .word_parser import load_questions
 from .question_selection import QuestionGenerator
 from .ifaces import IncorrectInputError, I_Response, I_Problem
-from .orthography_questions import QuestionGeneratorForOrthography
+from .orthography_questions import QuestionGeneratorForOrthography, PlaceholderType
 
 __all__ = [
     "Question",
@@ -12,4 +12,5 @@ __all__ = [
     "QuestionGeneratorForOrthography",
     "I_Response",
     "I_Problem",
+    "PlaceholderType",
 ]

@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "Ortografia"
-version = "0.9.1"
+version = "0.9.2"
 description = "A simple library for checking the spelling of the text."
 authors = ["Adam Ryczkowski <adam@statystyka.net>"]
 packages = [{ include = "Ortografia"}]

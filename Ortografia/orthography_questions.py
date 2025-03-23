@@ -41,7 +41,7 @@ class InputPlaceholder(BaseModel):
 
     def render_ambiguous_placeholder(self, emphasize: bool) -> Text:
         ans = Text()
-        style = "bold" if emphasize else "gray"
+        style = "bold on blue" if emphasize else "gray"
         if self.placeholder_type == PlaceholderType.RZ:
             ans.append("rz/ż", style=style)
         elif self.placeholder_type == PlaceholderType.CH:
@@ -85,6 +85,7 @@ class OrthographyQuestion(I_Problem):
     target_placeholder_idx: (
         int  # Index of the placeholder that the user should fill in.
     )
+    id_suffix: str = ""  # In case of ambiguity
 
     @staticmethod
     def FromStr(
@@ -163,7 +164,7 @@ class OrthographyQuestion(I_Problem):
                 placeholders=placeholders,
                 target_placeholder_idx=i,
             )
-            print(question.get_incorrect_word_str())
+            # print(question.get_incorrect_word_str())
             ans.append(question)
         return ans
 
@@ -172,11 +173,13 @@ class OrthographyQuestion(I_Problem):
         word: str,
         placeholders: list[tuple[int, InputPlaceholder]],
         target_placeholder_idx: int,
+        id_suffix: str = "",
     ) -> None:
         super().__init__(
             word=word,  # pyright:ignore[reportCallIssue]
             placeholders=placeholders,  # pyright:ignore[reportCallIssue]
             target_placeholder_idx=target_placeholder_idx,  # pyright:ignore[reportCallIssue]
+            id_suffix=id_suffix,  # pyright: ignore [reportCallIssue]
         )
 
     @property
@@ -204,12 +207,12 @@ class OrthographyQuestion(I_Problem):
             placeholder_idx += 1
 
         ans += self.word[last_str_pos:]  # The rest of the word
-        return ans
+        return ans + self.id_suffix
 
     @override
     def user_prompt_string(self) -> Text:
         return Text.assemble(
-            "Spell the bold part correctly: ", self.get_ambiguous_word()
+            "Spell the blue part correctly: ", self.get_ambiguous_word()
         )
 
     @override

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import random
 from builtins import enumerate
 from typing import override
 
@@ -9,6 +10,29 @@ from enum import Enum
 from pydantic import BaseModel
 from rich.text import Text
 import re
+
+
+class MaskType(Enum):
+    PLACEHOLDER = 0
+    CORRECT = 1
+    INCORRECT = 2
+    AMBIGUOUS = 3
+
+
+class MaskStyle(Enum):
+    NORMAL = 0
+    BOLD = 1
+    BOLD_BLUE = 2
+
+    def mask_string(self) -> str:
+        if self == MaskStyle.NORMAL:
+            return ""
+        elif self == MaskStyle.BOLD:
+            return "bold"
+        elif self == MaskStyle.BOLD_BLUE:
+            return "bold on blue"
+        else:
+            raise ValueError(f"Unknown mask style {self}")
 
 
 class PlaceholderType(Enum):
@@ -39,17 +63,21 @@ class InputPlaceholder(BaseModel):
     value: bool = False  # True means the letter from the placeholder label, False means the alternative.
     content: str  # The correct string to be put into the placeholder
 
+    @property
+    def ambiguous_placeholder(self) -> str:
+        if self.placeholder_type == PlaceholderType.RZ:
+            return "rz/ż"
+        elif self.placeholder_type == PlaceholderType.CH:
+            return "ch/h"
+        elif self.placeholder_type == PlaceholderType.U:
+            return "u/ó"
+        else:
+            raise ValueError(f"Unknown placeholder type {self.placeholder_type}")
+
     def render_ambiguous_placeholder(self, emphasize: bool) -> Text:
         ans = Text()
         style = "bold on blue" if emphasize else "gray"
-        if self.placeholder_type == PlaceholderType.RZ:
-            ans.append("rz/ż", style=style)
-        elif self.placeholder_type == PlaceholderType.CH:
-            ans.append("ch/h", style=style)
-        elif self.placeholder_type == PlaceholderType.U:
-            ans.append("u/ó", style=style)
-        else:
-            raise ValueError(f"Unknown placeholder type {self.placeholder_type}")
+        ans.append(self.ambiguous_placeholder, style=style)
         return ans
 
     def render_correct_placeholder(self, emphasize: bool) -> Text:
@@ -212,12 +240,12 @@ class OrthographyQuestion(I_Problem):
     @override
     def user_prompt_string(self) -> Text:
         return Text.assemble(
-            "Spell the blue part correctly: ", self.get_ambiguous_word()
+            "Spell the blue part correctly: ", self.get_ambiguous_word2()
         )
 
     @override
     def short_user_prompt_string(self) -> Text:
-        return self.get_ambiguous_word(mask_only_one=True)
+        return self.get_word_masked_on_target()
 
     @override
     def parse_user_response(self, answer: str) -> I_Response:
@@ -292,7 +320,38 @@ class OrthographyQuestion(I_Problem):
         ans += self.word[last_str_pos:]  # The rest of the word
         return ans
 
-    def get_ambiguous_word(self, mask_only_one: bool = False) -> Text:
+    # def get_ambiguous_word(self, mask_only_one: bool = False) -> Text:
+    #     ans = Text()
+    #     placeholder_idx = 0
+    #     last_str_pos = 0
+    #     while placeholder_idx < len(self.placeholders):
+    #         placeholder = self.placeholders[placeholder_idx]
+    #         ans.append(
+    #             self.word[last_str_pos: placeholder[0]]
+    #         )  # Beginning of the word, excluding the first placeholder
+    #         if self.target_placeholder_idx != placeholder_idx:
+    #             if mask_only_one:
+    #                 ans = Text.assemble(
+    #                     ans, placeholder[1].render_correct_placeholder(False)
+    #                 )
+    #             else:
+    #                 ans.append(placeholder[1].render_ambiguous_placeholder(False))
+    #         else:
+    #             ans.append(placeholder[1].render_ambiguous_placeholder(True))
+    #
+    #         last_str_pos = placeholder[0] + 1
+    #         placeholder_idx += 1
+    #
+    #     ans.append(self.word[last_str_pos:])
+    #     return ans
+
+    def render_word(
+        self,
+        mask_style_of_target: MaskStyle,
+        mask_type_of_target: MaskType,
+        mask_style_of_other: MaskStyle,
+        mask_type_of_other: MaskType,
+    ) -> Text:
         ans = Text()
         placeholder_idx = 0
         last_str_pos = 0
@@ -302,20 +361,74 @@ class OrthographyQuestion(I_Problem):
                 self.word[last_str_pos : placeholder[0]]
             )  # Beginning of the word, excluding the first placeholder
             if self.target_placeholder_idx != placeholder_idx:
-                if mask_only_one:
-                    ans = Text.assemble(
-                        ans, placeholder[1].render_correct_placeholder(False)
-                    )
+                style = mask_style_of_other.mask_string()
+                if mask_type_of_other == MaskType.PLACEHOLDER:
+                    ans.append("_", style)
+                elif mask_type_of_other == MaskType.CORRECT:
+                    ans.append(placeholder[1].correct_letter, style)
+                elif mask_type_of_other == MaskType.INCORRECT:
+                    ans.append(placeholder[1].incorrect_letter, style)
+                elif mask_type_of_other == MaskType.AMBIGUOUS:
+                    ans.append(placeholder[1].ambiguous_placeholder, style)
                 else:
-                    ans.append(placeholder[1].render_ambiguous_placeholder(False))
+                    raise ValueError(f"Unknown mask type {mask_type_of_other}")
             else:
-                ans.append(placeholder[1].render_ambiguous_placeholder(True))
+                style = mask_style_of_target.mask_string()
+                if mask_type_of_target == MaskType.PLACEHOLDER:
+                    ans.append("_", style)
+                elif mask_type_of_target == MaskType.CORRECT:
+                    ans.append(placeholder[1].correct_letter, style)
+                elif mask_type_of_target == MaskType.INCORRECT:
+                    ans.append(placeholder[1].incorrect_letter, style)
+                elif mask_type_of_target == MaskType.AMBIGUOUS:
+                    ans.append(placeholder[1].ambiguous_placeholder, style)
+                else:
+                    raise ValueError(f"Unknown mask type {mask_type_of_target}")
 
             last_str_pos = placeholder[0] + 1
             placeholder_idx += 1
 
         ans.append(self.word[last_str_pos:])
         return ans
+
+    def get_ambiguous_word(self) -> Text:
+        return self.render_word(
+            mask_type_of_target=MaskType.PLACEHOLDER,
+            mask_type_of_other=MaskType.PLACEHOLDER,
+            mask_style_of_target=MaskStyle.BOLD_BLUE,
+            mask_style_of_other=MaskStyle.BOLD,
+        )
+
+    def get_ambiguous_word2(self) -> Text:
+        b = bool(random.getrandbits(1))
+        ans = Text.assemble(
+            self.get_word_unmasked_on_target(b),
+            Text(
+                " / ",
+            ),
+            self.get_word_unmasked_on_target(not b),
+        )
+        return ans
+
+    def get_word_masked_on_target(self) -> Text:
+        return self.render_word(
+            mask_type_of_target=MaskType.PLACEHOLDER,
+            mask_type_of_other=MaskType.CORRECT,
+            mask_style_of_target=MaskStyle.BOLD_BLUE,
+            mask_style_of_other=MaskStyle.NORMAL,
+        )
+
+    def get_word_unmasked_on_target(self, correct: bool) -> Text:
+        if correct:
+            type = MaskType.CORRECT
+        else:
+            type = MaskType.INCORRECT
+        return self.render_word(
+            mask_type_of_target=type,
+            mask_type_of_other=MaskType.PLACEHOLDER,
+            mask_style_of_target=MaskStyle.BOLD_BLUE,
+            mask_style_of_other=MaskStyle.NORMAL,
+        )
 
 
 class OrthographyResponse(I_Response):

@@ -240,7 +240,7 @@ class OrthographyQuestion(I_Problem):
     @override
     def user_prompt_string(self) -> Text:
         return Text.assemble(
-            "Spell the blue part correctly: ", self.get_ambiguous_word2()
+            "Spell the blue part correctly: ", self.get_ambiguous_word()
         )
 
     @override
@@ -393,8 +393,8 @@ class OrthographyQuestion(I_Problem):
 
     def get_ambiguous_word(self) -> Text:
         return self.render_word(
-            mask_type_of_target=MaskType.PLACEHOLDER,
-            mask_type_of_other=MaskType.PLACEHOLDER,
+            mask_type_of_target=MaskType.AMBIGUOUS,
+            mask_type_of_other=MaskType.AMBIGUOUS,
             mask_style_of_target=MaskStyle.BOLD_BLUE,
             mask_style_of_other=MaskStyle.BOLD,
         )
@@ -425,7 +425,7 @@ class OrthographyQuestion(I_Problem):
             type = MaskType.INCORRECT
         return self.render_word(
             mask_type_of_target=type,
-            mask_type_of_other=MaskType.PLACEHOLDER,
+            mask_type_of_other=MaskType.AMBIGUOUS,
             mask_style_of_target=MaskStyle.BOLD_BLUE,
             mask_style_of_other=MaskStyle.NORMAL,
         )

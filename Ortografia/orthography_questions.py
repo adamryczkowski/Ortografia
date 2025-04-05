@@ -10,6 +10,7 @@ from enum import Enum
 from pydantic import BaseModel
 from rich.text import Text
 import re
+from pathlib import Path
 
 
 class MaskType(Enum):
@@ -447,3 +448,35 @@ class _QuestionWithScore_Orthography(QuestionWithScore):
 
 class QuestionGeneratorForOrthography(QuestionGenerator):
     questions: dict[str, _QuestionWithScore_Orthography] = {}  # pyright: ignore [reportIncompatibleVariableOverride]
+
+    def add_dictionary(
+        self,
+        dictionary_path: Path,
+        placeholder_types: list[PlaceholderType] | None = None,
+    ) -> int:
+        with open(dictionary_path, "r") as file:
+            words = file.readlines()
+
+        added_count = 0
+
+        for word in words:
+            questions = OrthographyQuestion.FromStr(
+                word.strip(), placeholder_types=placeholder_types
+            )
+            for question in questions:
+                if (existing_q := self.questions.get(question.problem_ID)) is not None:
+                    if existing_q.question.word == question.word:
+                        print(
+                            f"Duplicate question {question.problem_ID} with word {question.word}"
+                        )
+                        continue
+                while question.problem_ID in self.questions:
+                    if question.id_suffix == "":
+                        question.id_suffix = "1"
+                    else:
+                        val = int(question.id_suffix)
+                        val += 1
+                        question.id_suffix = f"{val}"
+                self.add_question(question)
+                added_count += 1
+        return added_count

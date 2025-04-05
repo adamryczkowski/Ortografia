@@ -78,13 +78,15 @@ class QuestionGenerator(BaseModel):
     questions: dict[str, QuestionWithScore] = {}
     current_epoch: int = 0
 
-    def add_question(self, question: I_Problem):
+    def add_question(
+        self, question: I_Problem, correct_count: int = 0, incorrect_count: int = 0
+    ):
         assert question.problem_ID not in self.questions
         self.questions[question.problem_ID] = QuestionWithScore(
             question=question,
-            correct_count=0,
-            incorrect_count=0,
-            last_epoch=self.current_epoch,
+            correct_count=correct_count,
+            incorrect_count=incorrect_count,
+            last_epoch=0,
         )
 
     def get_question(self) -> I_Problem:

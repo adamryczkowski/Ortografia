@@ -135,9 +135,13 @@ class QuestionGenerator(BaseModel):
         questions = self.get_worst_questions(
             max_count=20, add_decay=False, add_salt=False
         )
-        weights = np.ndarray(len(questions), float)
-        for i in range(len(questions)):
-            weights[i] = np.exp(-i * 0.05)
-        weights /= weights.sum()
+        weights = self.get_weights(len(questions))
         scores = np.array([q.get_correctness_score() for q in questions])
         return float(np.sum(weights * scores))
+
+    def get_weights(self, depth: int) -> list[float]:
+        weights = np.ndarray(depth, float)
+        for i in range(depth):
+            weights[i] = np.exp(-i * 0.05)
+        weights /= weights.sum()
+        return list(weights)

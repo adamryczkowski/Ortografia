@@ -22,10 +22,11 @@ def cli():
     type=click.Path(exists=True, path_type=Path),
     default=DEFAULT_STATE_PATH,
 )
-def analyze(state_file: Path):
+@click.argument("depth", type=int, default=20)
+def analyze(state_file: Path, depth: int):
     console = Console()
     analyze = UserContext(state_file)
-    console.print(analyze.rich_repr())
+    console.print(analyze.rich_repr(depth))
 
 
 @click.command()

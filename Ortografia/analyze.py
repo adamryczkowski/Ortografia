@@ -18,12 +18,22 @@ class UserContext:
     def worst_n_questions(self, n: int) -> list[QuestionWithScore]:
         return self.state.get_worst_questions(n, add_salt=False, add_decay=False)
 
-    def rich_repr(self) -> Text:
-        worst_questions = self.worst_n_questions(10)
+    def rich_repr(self, depth: int) -> Text:
+        worst_questions = self.worst_n_questions(depth)
+
+        weights = self.state.get_weights(len(worst_questions))
 
         ans = Text.assemble(
             Text(f"Record of {len(worst_questions)} worst questions:"),
             Text("\n"),
-            *[Text.assemble(q.rich_repr(), Text("\n")) for q in worst_questions],
+            *[
+                Text.assemble(
+                    q.rich_repr(),
+                    Text(", score_weight: "),
+                    Text(f"{weights[i]:.0%}", "blue"),
+                    Text("\n"),
+                )
+                for i, q in enumerate(worst_questions)
+            ],
         )
         return ans

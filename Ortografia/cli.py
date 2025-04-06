@@ -105,7 +105,10 @@ def play(state_file: Path):
         json = file.read()
     generator = TypeAdapter(QuestionGeneratorForOrthography).validate_json(json)
     greeting.append("Welcome! Your last session has been restored from ")
-    rel_path = state_file.relative_to(Path(__file__).parent.parent)
+    try:
+        rel_path = state_file.relative_to(Path(__file__).parent.parent)
+    except ValueError:
+        rel_path = state_file
     greeting.append(str(rel_path), "yellow")
     greeting.append(". You have given ")
     greeting.append(str(generator.current_epoch), "bold")

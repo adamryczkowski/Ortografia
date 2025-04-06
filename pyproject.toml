@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "Ortografia"
-version = "0.9.5"
+version = "1.0.0"
 description = "A simple library for checking the spelling of the text."
 authors = ["Adam Ryczkowski <adam@statystyka.net>"]
 packages = [{ include = "Ortografia"}]
@@ -11,6 +11,7 @@ python = "^3.12"
 scipy = "^1.15.2"
 pydantic = "^2.10.6"
 rich = "^13.9.4"
+click = "^8.1.8"
 
 [poetry.group.dev.dependencies]
 pytest = "^8.3.4"
@@ -27,3 +28,6 @@ pythonVersion = "3.12"
 pythonPlatform = "Linux"
 reportMissingImports = "error"
 reportInvalidTypeForm = false
+
+[tool.poetry.scripts]
+ortografia = "Ortografia.cli:cli"

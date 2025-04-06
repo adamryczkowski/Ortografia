@@ -1,2 +1,46 @@
-TODO: Bold the score only if it changed.
-TODO: Add an option to display correct/incorrect words instead of placeholders.
+= Ortografia
+
+Ortografia is a simple library for checking the spelling of text in Polish. It provides a command-line interface (CLI) to analyze user progress, load dictionaries, and play spelling quizzes.
+
+== Installation
+
+To install the library, use `poetry`:
+
+[source,bash]
+----
+poetry install
+----
+
+== Usage
+
+The CLI provides three main commands:
+
+* `analyze` - Analyzes the user's progress.
+* `load_dict` - Loads a dictionary file and updates the state.
+* `play` - Starts a spelling quiz.
+
+To use the CLI, run:
+
+[source,bash]
+----
+ortografia <command></command> [options]
+----
+
+For example, to analyze the user's progress:
+
+[source,bash]
+----
+ortografia analyze
+----
+
+To load a dictionary file:
+[source,bash]
+----
+ortografia load_dict <file>
+----
+
+To run a spelling quiz:
+[source,bash]
+----
+ortografia play
+----

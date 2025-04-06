@@ -46,49 +46,50 @@ def main2():
     console.print(greeting)
 
     while True:
-        json = generator.model_dump_json()
-        with open(state_path, "w") as file:
-            file.write(json)
+        with console.screen(hide_cursor=False):
+            json = generator.model_dump_json()
+            with open(state_path, "w") as file:
+                file.write(json)
 
-        question = generator.get_question()
+            question = generator.get_question()
 
-        response = None
-        while True:
-            console.print(question.user_prompt_string())
-            answer = input("Your answer: ").strip()
-            try:
-                response = question.parse_user_response(answer)
-            except IncorrectInputError as e:
-                console.print(str(e))
-                continue
-            except Exception:
-                raise
-            break
+            response = None
+            while True:
+                console.print(question.user_prompt_string())
+                answer = input("Your answer: ").strip()
+                try:
+                    response = question.parse_user_response(answer)
+                except IncorrectInputError as e:
+                    console.print(str(e))
+                    continue
+                except Exception:
+                    raise
+                break
 
-        assert isinstance(response, I_Response)
+            assert isinstance(response, I_Response)
 
-        previous_score = generator.get_score()
-        generator.update_question(question, response.is_correct)
-        current_score = generator.get_score()
-        delta_score = current_score - previous_score
-        response_text = Text()
-        if response.is_correct:
-            response_text.append("Correct", "bold green")
-        else:
-            response_text.append("Incorrect", "bold red")
+            previous_score = generator.get_score()
+            generator.update_question(question, response.is_correct)
+            current_score = generator.get_score()
+            delta_score = current_score - previous_score
+            response_text = Text()
+            if response.is_correct:
+                response_text.append("Correct", "bold green")
+            else:
+                response_text.append("Incorrect", "bold red")
 
-        response_text.append(f". {generator.get_score():.1%}", "bold")
-        if delta_score < -0.001:
-            response_text.append(" (")
-            response_text.append(f"{delta_score:.2%}", "red")
-            response_text.append(" change)")
-        elif delta_score > 0.001:
-            response_text.append(" (")
-            response_text.append(f"{delta_score:.2%}", "green")
-            response_text.append(" change)")
+            response_text.append(f". {generator.get_score():.1%}", "bold")
+            if delta_score < -0.001:
+                response_text.append(" (")
+                response_text.append(f"{delta_score:.2%}", "red")
+                response_text.append(" change)")
+            elif delta_score > 0.001:
+                response_text.append(" (")
+                response_text.append(f"{delta_score:.2%}", "green")
+                response_text.append(" change)")
 
-        response_text.append(".")
-        console.print(response_text)
+            response_text.append(".")
+            console.print(response_text)
 
 
 if __name__ == "__main__":

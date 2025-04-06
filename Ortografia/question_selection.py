@@ -133,11 +133,11 @@ class QuestionGenerator(BaseModel):
 
     def get_score(self) -> float:
         questions = self.get_worst_questions(
-            max_count=6, add_decay=False, add_salt=False
+            max_count=20, add_decay=False, add_salt=False
         )
         weights = np.ndarray(len(questions), float)
         for i in range(len(questions)):
-            weights[i] = np.exp(-i * 0.5)
+            weights[i] = np.exp(-i * 0.05)
         weights /= weights.sum()
         scores = np.array([q.get_correctness_score() for q in questions])
         return float(np.sum(weights * scores))

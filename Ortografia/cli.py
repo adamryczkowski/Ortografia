@@ -119,9 +119,32 @@ def play(state_file: Path):
     greeting.append(".")
 
     console.print(greeting)
+    delta_score = 0
+    response = None
 
     while True:
         with console.screen(hide_cursor=False):
+            response_text = Text()
+            if response is not None:
+                if response.is_correct:
+                    response_text.append("Correct", "bold green")
+                else:
+                    response_text.append("Incorrect", "bold red")
+            else:
+                response_text.append("Current score: ")
+
+            response_text.append(f"{generator.get_score():.1%}", "bold")
+            if delta_score < -0.0005:
+                response_text.append(" (")
+                response_text.append(f"{delta_score:.2%}", "red")
+                response_text.append(" change).")
+            elif delta_score > 0.0005:
+                response_text.append(" (")
+                response_text.append(f"{delta_score:.2%}", "green")
+                response_text.append(" change).")
+
+            console.print(response_text)
+
             json = generator.model_dump_json()
             with open(state_file, "w") as file:
                 file.write(json)
@@ -147,24 +170,6 @@ def play(state_file: Path):
             generator.update_question(question, response.is_correct)
             current_score = generator.get_score()
             delta_score = current_score - previous_score
-            response_text = Text()
-            if response.is_correct:
-                response_text.append("Correct", "bold green")
-            else:
-                response_text.append("Incorrect", "bold red")
-
-            response_text.append(f". {generator.get_score():.1%}", "bold")
-            if delta_score < -0.001:
-                response_text.append(" (")
-                response_text.append(f"{delta_score:.2%}", "red")
-                response_text.append(" change)")
-            elif delta_score > 0.001:
-                response_text.append(" (")
-                response_text.append(f"{delta_score:.2%}", "green")
-                response_text.append(" change)")
-
-            response_text.append(".")
-            console.print(response_text)
 
 
 cli.add_command(analyze)

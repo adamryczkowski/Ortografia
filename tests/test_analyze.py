@@ -6,7 +6,7 @@ from Ortografia import UserContext
 
 
 def test_analyze():
-    console = Console()
+    console = Console(color_system="truecolor")
     state_path = Path(__file__).parent / "quiz_state_saved2.json"
     analyze = UserContext(state_path)
 

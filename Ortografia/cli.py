@@ -24,7 +24,7 @@ def cli():
 )
 @click.argument("depth", type=int, default=20)
 def analyze(state_file: Path, depth: int):
-    console = Console()
+    console = Console(color_system="truecolor")
     analyze = UserContext(state_file)
     console.print(analyze.rich_repr(depth))
 

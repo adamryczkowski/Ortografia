@@ -16,7 +16,7 @@ from Ortografia import (
 def main2():
     console = Console()
     file_path = Path(__file__).parent / "polish_frequent_words.txt"
-    state_path = Path(__file__).parent / "quiz_state_saved.json"
+    state_path = Path(__file__).parent / "quiz_state_saved2.json"
     greeting = Text()
     if state_path.is_file():
         with open(state_path, "r") as file:

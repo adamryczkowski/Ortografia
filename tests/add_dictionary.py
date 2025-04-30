@@ -12,7 +12,7 @@ from Ortografia import (
 
 def add_dictionary(dictionary_file: Path) -> None:
     console = Console()
-    state_path = Path(__file__).parent / "quiz_state.json"
+    state_path = Path(__file__).parent / "quiz_state_saved.json"
     greeting = Text()
     assert dictionary_file.is_file()
     with open(state_path, "r") as file:
@@ -40,7 +40,7 @@ def add_dictionary(dictionary_file: Path) -> None:
     console.print(greeting)
 
     json = generator.model_dump_json()
-    state_path = Path(__file__).parent / "quiz_state_saved.json"
+    state_path = Path(__file__).parent / "quiz_state_saved2.json"
     with open(state_path, "w") as file:
         file.write(json)
 

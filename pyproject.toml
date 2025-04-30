@@ -23,7 +23,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.pyright]
 venvPath = "."
-venv = "/home/adam/.cache/pypoetry/virtualenvs/ortografia--wTfDlEi-py3.12"
+venv = "/home/adam/.cache/pypoetry/virtualenvs/ortografia-USQmDHjD-py3.12"
 pythonVersion = "3.12"
 pythonPlatform = "Linux"
 reportMissingImports = "error"

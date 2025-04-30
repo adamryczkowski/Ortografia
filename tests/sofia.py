@@ -45,8 +45,8 @@ def main2():
 
     console.print(greeting)
 
-    while True:
-        with console.screen(hide_cursor=False):
+    with console.screen(hide_cursor=False):
+        while True:
             json = generator.model_dump_json()
             with open(state_path, "w") as file:
                 file.write(json)
@@ -57,6 +57,7 @@ def main2():
             while True:
                 console.print(question.user_prompt_string())
                 answer = input("Your answer: ").strip()
+                console.clear()
                 try:
                     response = question.parse_user_response(answer)
                 except IncorrectInputError as e:

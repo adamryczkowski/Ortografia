@@ -133,15 +133,34 @@ class QuestionGenerator(BaseModel):
 
     def get_score(self) -> float:
         questions = self.get_worst_questions(
-            max_count=20, add_decay=False, add_salt=False
+            max_count=self.score_depth, add_decay=False, add_salt=False
         )
-        weights = self.get_weights(len(questions))
+        weights = self.get_weights()
         scores = np.array([q.get_correctness_score() for q in questions])
         return float(np.sum(weights * scores))
 
-    def get_weights(self, depth: int) -> list[float]:
-        weights = np.ndarray(depth, float)
-        for i in range(depth):
+    @property
+    def answer_count(self) -> tuple[int, int]:
+        """Returns the total number of answers given: positive and negative."""
+        total_correct = sum(q.correct_count for q in self.questions.values())
+        total_incorrect = sum(q.incorrect_count for q in self.questions.values())
+        return total_correct, total_incorrect
+
+    @property
+    def score_depth(self) -> int:
+        """Returns the depth of the score calculation, which is the number of questions considered."""
+        return 20
+
+    def get_weights(self) -> list[float]:
+        weights = np.ndarray(self.score_depth, float)
+        for i in range(self.score_depth):
             weights[i] = np.exp(-i * 0.05)
         weights /= weights.sum()
         return list(weights)
+
+    def clone(self) -> QuestionGenerator:
+        """Returns a clone of the current generator."""
+        return QuestionGenerator(
+            questions={k: v.copy() for k, v in self.questions.items()},
+            current_epoch=self.current_epoch,
+        )

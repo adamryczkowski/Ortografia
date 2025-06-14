@@ -3,6 +3,7 @@ from pathlib import Path
 from rich.console import Console
 
 from Ortografia import UserContext
+import time
 
 
 def test_analyze():
@@ -10,7 +11,9 @@ def test_analyze():
     state_path = Path(__file__).parent / "quiz_state_saved2.json"
     analyze = UserContext(state_path)
 
-    console.print(analyze.rich_repr(20))
+    while True:
+        console.print(analyze.get_report(20))
+        time.sleep(3)
 
 
 if __name__ == "__main__":

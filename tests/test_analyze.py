@@ -13,7 +13,7 @@ def test_analyze():
 
     while True:
         console.print(analyze.get_report(20))
-        time.sleep(3)
+        time.sleep(1)
 
 
 if __name__ == "__main__":

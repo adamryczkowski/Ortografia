@@ -132,12 +132,23 @@ class QuestionGenerator(BaseModel):
         return worst_questions[0]
 
     def get_score(self) -> float:
-        questions = self.get_worst_questions(
-            max_count=self.score_depth, add_decay=False, add_salt=False
-        )
-        weights = self.get_weights()
-        scores = np.array([q.get_correctness_score() for q in questions])
-        return float(np.sum(weights * scores))
+        score_sum = 0.0
+        for q in self.questions.values():
+            score_sum += q.get_correctness_score()
+        score = (
+            score_sum / len(self) - 0.2
+        ) / 0.6  # Normalize score from 20 to 80 percent
+        return min(max(score, 0.0), 1.0)
+        # questions = self.get_worst_questions(
+        #     max_count=self.score_depth, add_decay=False, add_salt=False
+        # )
+        # weights = self.get_weights()
+        # scores = np.array([q.get_correctness_score() for q in questions])
+        # return float(np.sum(weights * scores))
+
+    def __len__(self) -> int:
+        """Returns the number of questions in the generator."""
+        return len(self.questions)
 
     @property
     def answer_count(self) -> tuple[int, int]:

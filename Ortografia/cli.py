@@ -6,9 +6,11 @@ from rich.text import Text
 from .analyze import UserContext
 from .ifaces import I_Response, IncorrectInputError
 from .orthography_questions import QuestionGeneratorForOrthography, PlaceholderType
+from .logger import ResponseLogger
 
 DEFAULT_STATE_PATH = Path(__file__).parent.parent / "tests" / "quiz_state.json"
 DEFAULT_DICTIONARY_FILE = Path(__file__).parent / "polish_frequent_words.txt"
+DEFAULT_LOG_FILE = Path(__file__).parent.parent / "logs" / "responses.csv"
 
 
 @click.group()
@@ -26,7 +28,7 @@ def cli():
 def analyze(state_file: Path, depth: int):
     console = Console(color_system="truecolor")
     analyze = UserContext(state_file)
-    console.print(analyze.rich_repr(depth))
+    console.print(analyze.get_report(depth))
 
 
 @click.command()
@@ -97,14 +99,31 @@ def load_dict(state_file: Path, dictionary_file: Path, placeholder_types: list[s
     type=click.Path(exists=True, path_type=Path),
     default=DEFAULT_STATE_PATH,
 )
-def play(state_file: Path):
+@click.option(
+    "--log-file",
+    type=click.Path(path_type=Path),
+    default=DEFAULT_LOG_FILE,
+    help="Path to the log file for recording responses",
+)
+def play(state_file: Path, log_file: Path):
     console = Console()
     greeting = Text()
     if not state_file.is_file():
         raise Exception("State file not found. Please load a dictionary first.")
+
+    # Ensure log directory exists
+    log_file.parent.mkdir(parents=True, exist_ok=True)
+
+    # Initialize the logger
+    logger = ResponseLogger(log_file)
+
     with open(state_file, "r") as file:
         json = file.read()
     generator = TypeAdapter(QuestionGeneratorForOrthography).validate_json(json)
+
+    # Set the logger for the generator
+    generator.set_logger(logger)
+
     greeting.append("Welcome! Your last session has been restored from ")
     try:
         rel_path = state_file.relative_to(Path(__file__).parent.parent)
@@ -158,6 +177,7 @@ def play(state_file: Path):
                 answer = input("Your answer: ").strip()
                 try:
                     response = question.parse_user_response(answer)
+                    # The actual logging happens in generator.update_question
                 except IncorrectInputError as e:
                     console.print(str(e))
                     continue

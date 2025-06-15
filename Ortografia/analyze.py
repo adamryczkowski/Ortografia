@@ -100,9 +100,9 @@ class UserContext:
             else:
                 assert self._last_state is not None
                 if last_pos > pos:
-                    change = "[green bold]↑"
+                    change = "[red bold]↑"
                 elif last_pos < pos:
-                    change = "[red bold]↓"
+                    change = "[green bold]↓"
                 else:
                     change = "[gray]="
 
@@ -141,32 +141,6 @@ class UserContext:
         self._last_state = current_state
         self._last_report = table
         return table
-
-    # def rich_repr(self, depth: int) -> Text:
-    #     worst_questions = self.worst_n_questions(depth)
-    #
-    #     weights = self._gen.get_weights(len(worst_questions))
-    #
-    #     table = Table()
-    #     table.add_column("Word", justify="left")
-    #     table.add_column("OK", justify="left")
-    #     table.add_column("Bad", justify="left")
-    #     table.add_column("Score", justify="right")
-    #
-    #     ans = Text.assemble(
-    #         Text(f"Record of {len(worst_questions)} worst questions:"),
-    #         Text("\n"),
-    #         *[
-    #             Text.assemble(
-    #                 q.rich_repr(),
-    #                 Text(", score_weight: "),
-    #                 Text(f"{weights[i]:.0%}", "blue"),
-    #                 Text("\n"),
-    #             )
-    #             for i, q in enumerate(worst_questions)
-    #         ],
-    #     )
-    #     return ans
 
 
 def are_scores_different(

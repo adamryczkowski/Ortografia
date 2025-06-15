@@ -2,10 +2,11 @@ from __future__ import annotations
 
 import random
 from builtins import enumerate
-from typing import override
+from typing import override, Optional
 
 from .ifaces import I_Response, I_Problem, IncorrectInputError
 from .question_selection import QuestionGenerator, QuestionWithScore
+from .logger import ResponseLogger
 from enum import Enum
 from pydantic import BaseModel
 from rich.text import Text
@@ -115,6 +116,7 @@ class OrthographyQuestion(I_Problem):
         int  # Index of the placeholder that the user should fill in.
     )
     id_suffix: str = ""  # In case of ambiguity
+    _logger: Optional[ResponseLogger] = None
 
     @staticmethod
     def FromStr(
@@ -251,17 +253,44 @@ class OrthographyQuestion(I_Problem):
     @override
     def parse_user_response(self, answer: str) -> I_Response:
         answer = answer.strip().lower()
+
         if answer == self.target_placeholder.correct_letter:
-            return OrthographyResponse(user_response_correct=True, question=self)
+            response = OrthographyResponse(user_response_correct=True, question=self)
         elif answer == self.target_placeholder.incorrect_letter:
-            return OrthographyResponse(user_response_correct=False, question=self)
+            response = OrthographyResponse(user_response_correct=False, question=self)
+        elif answer == self.get_correct_word_str():
+            response = OrthographyResponse(user_response_correct=True, question=self)
+        elif answer == self.get_incorrect_word_str():
+            response = OrthographyResponse(user_response_correct=False, question=self)
+        else:
+            raise IncorrectInputError(f"Unknown answer {answer}")
 
-        if answer == self.get_correct_word_str():
-            return OrthographyResponse(user_response_correct=True, question=self)
-        if answer == self.get_incorrect_word_str():
-            return OrthographyResponse(user_response_correct=False, question=self)
+        return response
 
-        raise IncorrectInputError(f"Unknown answer {answer}")
+    def log_response(self, answer: str, epoch: int, is_correct: bool) -> None:
+        """Log the user's response to this question.
+
+        Args:
+            answer: The answer provided by the user.
+            epoch: The current epoch of the quiz.
+            is_correct: Whether the answer was correct.
+        """
+        if self._logger is not None:
+            self._logger.log_response(
+                epoch=epoch,
+                question_id=self.problem_ID,
+                given_answer=answer,
+                is_correct=is_correct,
+            )
+
+    @classmethod
+    def set_logger(cls, logger: ResponseLogger) -> None:
+        """Set the logger for all OrthographyQuestion instances.
+
+        Args:
+            logger: The logger to use.
+        """
+        cls._logger = logger
 
     def get_correct_word(self) -> Text:
         ans = Text()
@@ -320,31 +349,6 @@ class OrthographyQuestion(I_Problem):
 
         ans += self.word[last_str_pos:]  # The rest of the word
         return ans
-
-    # def get_ambiguous_word(self, mask_only_one: bool = False) -> Text:
-    #     ans = Text()
-    #     placeholder_idx = 0
-    #     last_str_pos = 0
-    #     while placeholder_idx < len(self.placeholders):
-    #         placeholder = self.placeholders[placeholder_idx]
-    #         ans.append(
-    #             self.word[last_str_pos: placeholder[0]]
-    #         )  # Beginning of the word, excluding the first placeholder
-    #         if self.target_placeholder_idx != placeholder_idx:
-    #             if mask_only_one:
-    #                 ans = Text.assemble(
-    #                     ans, placeholder[1].render_correct_placeholder(False)
-    #                 )
-    #             else:
-    #                 ans.append(placeholder[1].render_ambiguous_placeholder(False))
-    #         else:
-    #             ans.append(placeholder[1].render_ambiguous_placeholder(True))
-    #
-    #         last_str_pos = placeholder[0] + 1
-    #         placeholder_idx += 1
-    #
-    #     ans.append(self.word[last_str_pos:])
-    #     return ans
 
     def render_word(
         self,
@@ -448,6 +452,7 @@ class _QuestionWithScore_Orthography(QuestionWithScore):
 
 class QuestionGeneratorForOrthography(QuestionGenerator):
     questions: dict[str, _QuestionWithScore_Orthography] = {}  # pyright: ignore [reportIncompatibleVariableOverride]
+    _logger: Optional[ResponseLogger] = None
 
     def add_dictionary(
         self,
@@ -480,3 +485,26 @@ class QuestionGeneratorForOrthography(QuestionGenerator):
                 self.add_question(question)
                 added_count += 1
         return added_count
+
+    def set_logger(self, logger: ResponseLogger) -> None:
+        """Set the logger for this question generator and all its questions.
+
+        Args:
+            logger: The logger to use.
+        """
+        self._logger = logger
+        OrthographyQuestion.set_logger(logger)
+
+    def update_question(self, question: I_Problem, correct: bool):
+        """Update the question with the user's response and log it."""
+        if isinstance(question, OrthographyQuestion) and self._logger is not None:
+            # This method is called after parsing the response, so we need to log here
+            answer = (
+                question.target_placeholder.correct_letter
+                if correct
+                else question.target_placeholder.incorrect_letter
+            )
+            question.log_response(answer, self.current_epoch, correct)
+
+        # Call the parent implementation to update scores
+        super().update_question(question, correct)

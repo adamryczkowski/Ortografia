@@ -10,13 +10,15 @@ from Ortografia import (
     IncorrectInputError,
     I_Response,
     PlaceholderType,
+    ResponseLogger,
 )
 
 
 def main2():
     console = Console()
     file_path = Path(__file__).parent / "polish_frequent_words.txt"
-    state_path = Path(__file__).parent / "quiz_state_saved2.json"
+    state_path = Path(__file__).parent / "quiz_state.json"
+    log_path = Path(__file__).parent / "ortografia_responses.csv"
     greeting = Text()
     if state_path.is_file():
         with open(state_path, "r") as file:
@@ -33,7 +35,9 @@ def main2():
         greeting.append(f"{generator.get_score():.1%}", "bold")
         greeting.append(".")
     else:
-        generator = load_questions(file_path, [PlaceholderType.RZ, PlaceholderType.CH])
+        generator = load_questions(
+            file_path, [PlaceholderType.RZ, PlaceholderType.CH, PlaceholderType.U]
+        )
 
         greeting.append(
             "Welcome! New dictionary loaded. You will be asked to spell a set of "
@@ -43,6 +47,9 @@ def main2():
         greeting.append(f"{generator.get_score():.1%}", "bold")
         greeting.append(".")
 
+    logger = ResponseLogger(log_path)
+    assert isinstance(generator, QuestionGeneratorForOrthography)
+    generator.set_logger(logger)
     console.print(greeting)
 
     with console.screen(hide_cursor=False):
